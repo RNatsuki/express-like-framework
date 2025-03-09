@@ -2,6 +2,8 @@
 
 A lightweight, TypeScript-based framework inspired by Express.js for building web applications and APIs with a familiar API.
 
+> **Note:** As of version 1.1.0, this package uses ES modules (not CommonJS).
+
 ## Features
 
 - Express-like API with modern TypeScript support
@@ -14,20 +16,19 @@ A lightweight, TypeScript-based framework inspired by Express.js for building we
 
 ```bash
 # Using pnpm (recommended)
-pnpm add @ibarra/express-lite
+pnpm add @rnatsuki/express-lite
 
 # Using npm
-npm install @ibarra/express-lite
+npm install @rnatsuki/express-lite
 
 # Using yarn
-yarn add @ibarra/express-lite
+yarn add @rnatsuki/express-lite
 ```
 
 ## Quick Start
 
 ```typescript
-import express from '@ibarra/express-lite';
-
+import express from '@rnatsuki/express-lite';
 const app = express();
 
 // Use middleware
@@ -120,14 +121,58 @@ app.use(myMiddleware);
 - `express.urlencoded()` - Parses URL-encoded request bodies
 - `express.cors()` - Enables CORS for all routes
 - `express.logger()` - Logs request information
+- `express.static()` - Serves static files from a directory (added in v1.1.0)
+
+## Version History
+
+### v1.1.0
+- Added static file middleware with support for serving static files from directories
+- Migrated to ES modules
+- Fixed type definitions
+- Added more examples
+
+### v1.0.0
+- Initial release with core functionality
+- Express-like API with middleware support
+- Routing capabilities
 
 ## Common Examples
 
 ### Serving Static Files
 
+ExpressLite includes a static file middleware that serves files from a specified directory. This was added in version 1.1.0.
+
 ```typescript
-// Serving static files from a directory
+import express from '@rnatsuki/express-lite';
+import path from 'path';
+
+const app = express();
+
+// Basic usage - serve files from the 'public' directory
 app.use(express.static('public'));
+
+// Advanced usage with options
+app.use(express.static(new URL('./public', import.meta.url).pathname, {
+  index: 'index.html',     // Default index file for directory requests
+  dotfiles: 'ignore',      // How to handle dotfiles: 'allow', 'deny', or 'ignore'
+  etag: true,              // Enable ETag header generation
+  maxAge: 86400,          // Cache control max-age in seconds (1 day)
+}));
+
+app.listen(3000, () => {
+  console.log('Server running at http://localhost:3000');
+});
+```
+
+#### Content Type Detection
+
+The static middleware automatically detects the appropriate content type based on file extension:
+
+```typescript
+// For example:
+// http://localhost:3000/styles.css → Content-Type: text/css
+// http://localhost:3000/image.png → Content-Type: image/png
+// http://localhost:3000/data.json → Content-Type: application/json
 ```
 
 ### Route Parameters
@@ -142,6 +187,10 @@ app.get('/users/:id', (req, res) => {
 ### API with JSON Responses
 
 ```typescript
+import express from '@rnatsuki/express-lite';
+
+const app = express();
+
 app.get('/api/products', (req, res) => {
   const products = [/* product data */];
   res.json(products);
@@ -152,6 +201,10 @@ app.get('/api/products', (req, res) => {
 
 ```typescript
 // Error handling middleware
+import express from '@rnatsuki/express-lite';
+
+const app = express();
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).send('Something broke!');
@@ -166,6 +219,7 @@ app.use((err, req, res, next) => {
 - May not support all advanced routing patterns
 - Limited documentation and community support
 - No built-in view system
+- Static file serving is more basic than Express.js
 
 ## Contributing
 
