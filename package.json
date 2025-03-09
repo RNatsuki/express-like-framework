@@ -1,5 +1,6 @@
 {
   "name": "@rnatsuki/express-lite",
+  "type": "module",
   "version": "1.0.0",
   "description": "A lightweight Express-like HTTP framework for Node.js",
   "main": "dist/index.js",

@@ -5,6 +5,8 @@ import { ServerResponse } from 'http';
 export type ErrorHandlerMiddleware = (err: any, req: Request, res: Response, next: NextFunction) => void;
 import * as url from 'url';
 import * as querystring from 'querystring';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Body parser middleware for JSON and URL-encoded form data
@@ -73,6 +75,176 @@ export const bodyParser = {
   }
 };
 
+/**
+ * Mapping of file extensions to MIME types
+ */
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.txt': 'text/plain',
+  '.pdf': 'application/pdf',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.eot': 'font/eot',
+  '.otf': 'font/otf',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav'
+};
+
+/**
+ * Static file middleware that serves files from a specified directory
+ * @param root Directory path from which to serve static files
+ * @param options Configuration options for the static middleware
+ */
+export function serveStatic(root: string, options: {
+  index?: string | false;
+  dotfiles?: 'allow' | 'deny' | 'ignore';
+  etag?: boolean;
+  maxAge?: number;
+} = {}): Middleware {
+  const defaultOptions = {
+    index: 'index.html',
+    dotfiles: 'ignore' as const,
+    etag: true,
+    maxAge: 0
+  };
+
+  const staticOptions = { ...defaultOptions, ...options };
+
+  // Normalize and resolve the root directory path
+  const rootPath = path.resolve(root);
+
+  return (req: Request, res: Response, next: NextFunction) => {
+    // Skip non-GET and non-HEAD requests
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      return next();
+    }
+
+    // Get the pathname from the URL
+    const parsedUrl = url.parse(req.url || '');
+    const pathname = parsedUrl.pathname || '';
+    
+    // Decode and normalize the path
+    let filePath = path.normalize(decodeURIComponent(pathname));
+    
+    // Prevent directory traversal attacks
+    if (filePath.includes('..')) {
+      return next(new Error('Invalid file path'));
+    }
+    
+    // Remove leading slash if present
+    if (filePath.startsWith('/')) {
+      filePath = filePath.substring(1);
+    }
+    
+    // Resolve the absolute file path
+    const absolutePath = path.join(rootPath, filePath);
+    
+    // Check if the path is a dotfile (starts with .)
+    const fileName = path.basename(absolutePath);
+    if (fileName.startsWith('.')) {
+      if (staticOptions.dotfiles === 'deny') {
+        res.status(403).send('Forbidden');
+        return;
+      }
+      if (staticOptions.dotfiles === 'ignore') {
+        return next();
+      }
+      // 'allow' continues to serve the file
+    }
+
+    // Check if the file exists and is accessible
+    fs.stat(absolutePath, (err, stats) => {
+      if (err) {
+        if (err.code === 'ENOENT') {
+          // File not found, move to next middleware
+          return next();
+        }
+        // Server error
+        return next(err);
+      }
+
+      // If it's a directory and we have an index option
+      if (stats.isDirectory()) {
+        if (staticOptions.index === false) {
+          return next();
+        }
+        
+        // Try to serve the index file
+        const indexPath = path.join(absolutePath, staticOptions.index as string);
+        fs.stat(indexPath, (err, indexStats) => {
+          if (err || !indexStats.isFile()) {
+            return next();
+          }
+          
+          // If index file exists, serve it
+          serveFile(indexPath, req, res, next, staticOptions);
+        });
+      } else if (stats.isFile()) {
+        // Serve the file directly
+        serveFile(absolutePath, req, res, next, staticOptions);
+      } else {
+        // Not a file or directory
+        return next();
+      }
+    });
+  };
+}
+
+/**
+ * Helper function to serve a file with appropriate headers
+ */
+function serveFile(
+  filePath: string, 
+  req: Request, 
+  res: Response, 
+  next: NextFunction, 
+  options: { etag?: boolean; maxAge?: number }
+): void {
+  // Get file extension and set content type
+  const ext = path.extname(filePath).toLowerCase();
+  const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+  
+  // Set appropriate headers
+  res.setHeader('Content-Type', contentType);
+  
+  // Set cache control headers
+  if (options.maxAge) {
+    res.setHeader('Cache-Control', `public, max-age=${options.maxAge}`);
+  }
+  
+  // Only stream file for GET requests (HEAD requests only need headers)
+  if (req.method === 'HEAD') {
+    fs.stat(filePath, (err, stats) => {
+      if (err) return next(err);
+      res.setHeader('Content-Length', stats.size);
+      res.end();
+    });
+    return;
+  }
+  
+  // Create read stream
+  const fileStream = fs.createReadStream(filePath);
+  
+  // Handle errors in the stream
+  fileStream.on('error', (err) => {
+    next(err);
+  });
+  
+  // Pipe the file to the response
+  fileStream.pipe(res);
+}
 /**
  * CORS middleware
  * @param options CORS options
