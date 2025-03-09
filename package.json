@@ -1,5 +1,5 @@
 {
-  "name": "@ibarra/express-lite",
+  "name": "@rnatsuki/express-lite",
   "version": "1.0.0",
   "description": "A lightweight Express-like HTTP framework for Node.js",
   "main": "dist/index.js",
@@ -26,7 +26,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/ibarra/express-lite.git"
+    "url": "https://github.com/RNatsuki/express-like-framework.git"
   },
   "engines": {
     "node": ">=14.0.0"
