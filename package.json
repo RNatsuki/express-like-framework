@@ -1,7 +1,7 @@
 {
   "name": "@rnatsuki/express-lite",
   "type": "module",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A lightweight Express-like HTTP framework for Node.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -15,9 +15,18 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "testMatch": ["**/__tests__/**/*.test.ts"]
+    "testMatch": [
+      "**/__tests__/**/*.test.ts"
+    ]
   },
-  "keywords": ["express", "framework", "http", "server", "node", "lightweight"],
+  "keywords": [
+    "express",
+    "framework",
+    "http",
+    "server",
+    "node",
+    "lightweight"
+  ],
   "author": "Ibarra",
   "license": "ISC",
   "files": [
